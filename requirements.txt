@@ -1,0 +1,11 @@
+numpy
+pandas
+geopandas<0.12.2
+numpy
+dash
+flask
+networkx
+momepy
+dash_bootstrap_components
+dash_leaflet
+gunicorn
