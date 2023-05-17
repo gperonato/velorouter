@@ -6,6 +6,7 @@ This repository contains a web-based route planner for bike paths in Switzerland
  
  - [swissTLMRegio](https://www.swisstopo.admin.ch/en/geodata/landscape/tlmregio.html) (v. 2022) provided by Switzerland's Federal Office of Topography (swisstopo), specifically the layer of named locations.
 
+Tha background map is from OpenStreetMap (© [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors).
 
 ## Use
 

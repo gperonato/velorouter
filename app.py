@@ -130,7 +130,12 @@ app.layout = dbc.Container(
             dbc.Col(
                 [
                     dl.Map(
-                        [dl.TileLayer(), dl.LayerGroup(id="layer")],
+                        [
+                            dl.TileLayer(
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            ),
+                            dl.LayerGroup(id="layer"),
+                        ],
                         style={"width": "100%", "height": "500px"},
                         center=(47, 8),
                         zoom=8,
