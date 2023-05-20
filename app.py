@@ -118,7 +118,15 @@ via = dbc.Row(
 )
 
 button = dbc.Row(
-    [dbc.Col(dbc.Button("Submit", id="submit"), width=5,),], className="mb-3"
+    [
+        dbc.Col(
+            dbc.Button(
+                dbc.Spinner(["Submit", html.Div(id="loading-output")]), id="submit",
+            ),
+            width=2,
+        ),
+    ],
+    className="mb-3",
 )
 
 app.layout = dbc.Container(
@@ -256,8 +264,9 @@ app.layout = dbc.Container(
         Output("height_loss", "children"),
         Output("results-div", "style"),
         Output("graph", "figure"),
+        Output("loading-output", "children"),
     ],
-    Input("submit", "n_clicks"),
+    [Input("submit", "n_clicks")],
     State("origin", "value"),
     State("destination", "value"),
     State("via", "value"),
@@ -317,6 +326,7 @@ def update_output(n_clicks, origin, destination, via):
             *results_string,
             {"display": "block"},
             fig,
+            None,  # for the spinner
         )
 
 
