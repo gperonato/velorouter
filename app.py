@@ -13,6 +13,7 @@ Dash app to query the path network
 from flask import Flask
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import plotly.graph_objs as go
@@ -59,7 +60,7 @@ locations = [
     v.get("location") for k, v in G.nodes(data=True) if v.get("location") != None
 ]
 locations.sort()
-locations = [html.Option(value=v) for v in locations]
+locations_options = [html.Option(value=v) for v in locations]
 
 # Prepare UI
 server = Flask(__name__)
@@ -125,6 +126,7 @@ button = dbc.Row(
             ),
             width=2,
         ),
+        dbc.Col(html.Div("", id="status",), width=5,),
     ],
     className="mb-3",
 )
@@ -132,7 +134,7 @@ button = dbc.Row(
 app.layout = dbc.Container(
     [
         html.H1("VeloRouter"),
-        html.Datalist(id="locations", children=locations,),
+        html.Datalist(id="locations", children=locations_options,),
         dbc.Form([origin, destination, via, button]),
         dbc.Row(
             dbc.Col(
@@ -254,6 +256,28 @@ app.layout = dbc.Container(
 
 
 @app.callback(
+    Output("status", "children"),
+    [Input("submit", "n_clicks")],
+    State("origin", "value"),
+    State("destination", "value"),
+    State("via", "value"),
+    prevent_initial_call=True,
+)
+def check_inputs(n_clicks, origin, destination, via):
+    if n_clicks is not None:
+        if origin == destination:
+            return "Origin and destination locations must be different."
+        elif origin not in locations and destination not in locations:
+            return "Origin and destination locations not found."
+        elif origin not in locations:
+            return "Origin location not found."
+        elif destination not in locations:
+            return "Destination location not found."
+        elif via not in locations and not (via == None or via == ""):
+            return "Via location not found."
+
+
+@app.callback(
     [
         Output("map", "zoom"),
         Output("map", "center"),
@@ -274,60 +298,67 @@ app.layout = dbc.Container(
 )
 def update_output(n_clicks, origin, destination, via):
     if n_clicks is not None:
+        if (
+            origin != destination
+            and origin in locations
+            and destination in locations
+            and (via in locations or (via == None or via == ""))
+        ):
+            if via == None or via == "":
+                via = []
+                file_path = f"./gpx/{origin}-{destination}.gpx".replace(" ", "_")
+            else:
+                file_path = f"./gpx/{origin}-{via}-{destination}.gpx".replace(" ", "_")
+                via = [via]
 
-        if via == None or via == "":
-            via = []
-            file_path = f"./gpx/{origin}-{destination}.gpx".replace(" ", "_")
+            segments = get_path(G, origin, destination, via)
+
+            segments[["geometry"]].to_crs("EPSG:4326").to_file(file_path)
+
+            polylines, markers = get_dl(segments)
+
+            geometry = [*polylines, *markers]
+
+            results = (
+                segments[segments.columns[segments.dtypes == "float64"]].sum().round(0)
+            )
+            results_string = [
+                f"{str(round(results['length_km']))} km",
+                f"{str(round(results['length_unpaved_km']))} km",
+                f"{str(round(results['height_gain_m']))} m",
+                f"{str(round(results['height_loss_m']))} m",
+            ]
+
+            fig = make_graph(segments)
+
+            centroid = list(
+                box(*segments.to_crs("EPSG:4326").total_bounds).centroid.coords
+            )[0]
+            centroid = (centroid[1], centroid[0])
+
+            # TODO improve
+            zoom = DEFAULT_ZOOM
+            # Zoom in if there is enough vertical space
+            vertical_dist = (segments.total_bounds[3] - segments.total_bounds[1]) / 1000
+
+            if vertical_dist < 110:
+                zoom = 9
+            if vertical_dist < 50:
+                zoom = 10
+            if vertical_dist < 10:
+                zoom = 11
+
+            return (
+                zoom,
+                centroid,
+                geometry,
+                *results_string,
+                {"display": "block"},
+                fig,
+                None,  # for the spinner
+            )
         else:
-            file_path = f"./gpx/{origin}-{via}-{destination}.gpx".replace(" ", "_")
-            via = [via]
-
-        segments = get_path(G, origin, destination, via)
-
-        segments[["geometry"]].to_crs("EPSG:4326").to_file(file_path)
-
-        polylines, markers = get_dl(segments)
-
-        geometry = [*polylines, *markers]
-
-        results = (
-            segments[segments.columns[segments.dtypes == "float64"]].sum().round(0)
-        )
-        results_string = [
-            f"{str(round(results['length_km']))} km",
-            f"{str(round(results['length_unpaved_km']))} km",
-            f"{str(round(results['height_gain_m']))} m",
-            f"{str(round(results['height_loss_m']))} m",
-        ]
-
-        fig = make_graph(segments)
-
-        centroid = list(
-            box(*segments.to_crs("EPSG:4326").total_bounds).centroid.coords
-        )[0]
-        centroid = (centroid[1], centroid[0])
-
-        # TODO improve
-        zoom = DEFAULT_ZOOM
-        # Zoom in if there is enough vertical space
-        vertical_dist = (segments.total_bounds[3] - segments.total_bounds[1]) / 1000
-
-        if vertical_dist < 110:
-            zoom = 9
-        if vertical_dist < 50:
-            zoom = 10
-        if vertical_dist < 10:
-            zoom = 11
-
-        return (
-            zoom,
-            centroid,
-            geometry,
-            *results_string,
-            {"display": "block"},
-            fig,
-            None,  # for the spinner
-        )
+            raise PreventUpdate()
 
 
 @app.callback(
