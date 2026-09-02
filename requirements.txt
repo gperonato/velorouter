@@ -1,7 +1,6 @@
-numpy
+numpy<2
 pandas
 geopandas<0.12.2
-numpy
 dash
 flask
 networkx
