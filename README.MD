@@ -2,9 +2,9 @@
 
 This repository contains a web-based route planner for bike paths in Switzerland based on the following datasets:
 
- - [Veloland Schweiz](https://data.geo.admin.ch/browser/index.html#/collections/ch.astra.veloland") (v. 4/26/2023) provided by Switzerland's Federal Roads Office (FEDRO) and comprizing "the national, regional and local cycling routes in Switzerland and Liechtenstein";
+ - [Veloland Schweiz](https://data.geo.admin.ch/browser/index.html#/collections/ch.astra.veloland") (v. 2/25/2026) provided by Switzerland's Federal Roads Office (FEDRO) and comprizing "the national, regional and local cycling routes in Switzerland and Liechtenstein";
  
- - [swissTLMRegio](https://www.swisstopo.admin.ch/en/geodata/landscape/tlmregio.html) (v. 2022) provided by Switzerland's Federal Office of Topography (swisstopo), specifically the layer of named locations.
+ - [swissTLMRegio](https://www.swisstopo.admin.ch/en/geodata/landscape/tlmregio.html) (v. 2025) provided by Switzerland's Federal Office of Topography (swisstopo), specifically the layer of named locations.
 
 Tha background map is from OpenStreetMap (© [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors).
 
