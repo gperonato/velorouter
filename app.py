@@ -24,6 +24,26 @@ import getpass
 from router import *
 
 DEFAULT_ZOOM = 8
+GPX_DIR = "./gpx"
+
+
+def get_gpx_path(origin, destination, via=None):
+    """Build the path of the GPX file of a route
+
+    Location names can contain a path separator (e.g. "Biel/Bienne"), and the
+    values reaching the callbacks are not necessarily validated, so the file
+    name is sanitised and the result is checked to stay directly inside GPX_DIR.
+    """
+    stops = [origin, destination] if not via else [origin, via, destination]
+    name = "-".join(stops).replace(" ", "_").replace(os.sep, "_")
+    if os.altsep:
+        name = name.replace(os.altsep, "_")
+
+    file_path = os.path.join(GPX_DIR, name + ".gpx")
+    if os.path.dirname(os.path.realpath(file_path)) != os.path.realpath(GPX_DIR):
+        raise PreventUpdate()
+
+    return file_path
 
 
 def make_graph(segments):
@@ -304,12 +324,8 @@ def update_output(n_clicks, origin, destination, via):
             and destination in locations
             and (via in locations or (via == None or via == ""))
         ):
-            if via == None or via == "":
-                via = []
-                file_path = f"./gpx/{origin}-{destination}.gpx".replace(" ", "_")
-            else:
-                file_path = f"./gpx/{origin}-{via}-{destination}.gpx".replace(" ", "_")
-                via = [via]
+            file_path = get_gpx_path(origin, destination, via)
+            via = [via] if via else []
 
             segments = get_path(G, origin, destination, via)
 
@@ -371,16 +387,8 @@ def update_output(n_clicks, origin, destination, via):
 )
 def download(n_clicks, origin, destination, via):
     if n_clicks is not None:
-        if via == None or via == "":
-            file_path = f"./gpx/{origin}-{destination}.gpx".replace(" ", "_")
-        else:
-            file_path = f"./gpx/{origin}-{via}-{destination}.gpx".replace(" ", "_")
-
-        return dcc.send_file(file_path)
+        return dcc.send_file(get_gpx_path(origin, destination, via))
 
 
 if __name__ == "__main__":
-    if os.environ.get("HOSTNAME") == PARAMS["deployment_user"]:
-        app.run_server(debug=False, port=PARAMS["port"])
-    else:
-        app.run_server(debug=True, port=PARAMS["port"])
+    app.run_server(debug=os.environ.get("DEBUG") == "1", port=PARAMS["port"])

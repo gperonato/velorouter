@@ -143,7 +143,8 @@ def get_path(G, origin, destination, via=[]) -> gpd.GeoDataFrame:
 
         segment = {}
         for p in range(len(shortest_path) - 1):
-            segment = G[shortest_path[p]][shortest_path[p + 1]]
+            # Copy: G[u][v] is the edge attribute dict of the shared graph
+            segment = dict(G[shortest_path[p]][shortest_path[p + 1]])
             segment["start"] = shortest_path[p]
             segment["end"] = shortest_path[p + 1]
             segment["leg"] = s
