@@ -1,0 +1,28 @@
+# Ship only what the image needs.
+#
+# This is an allow-list: everything is excluded first, so anything that happens
+# to sit in the working directory when the image is built -- deployment config,
+# TLS material, scratch scripts, the source geodatabases under data/ -- cannot
+# end up in an image layer by accident.
+*
+
+# Application
+!app.py
+!router.py
+!requirements.txt
+!assets
+
+# Pre-built network. load_graph() prefers graph.p and falls back to graph.gml,
+# which is the one present on a clean checkout, i.e. in CI.
+!graph.p
+!graph.gml
+
+# Keep the directory update_output() writes into, but not the cached routes:
+# docker-compose shadows it with a volume, a plain docker run does not.
+!gpx
+gpx/*
+
+# Run by the CI workflow as: docker run velorouter python3 test.py
+!test.py
+
+!LICENSE
