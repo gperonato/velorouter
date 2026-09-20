@@ -17,7 +17,6 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import plotly.graph_objs as go
-from shapely.geometry import box
 import os
 import json
 import getpass
@@ -25,6 +24,8 @@ from router import *
 
 DEFAULT_ZOOM = 8
 GPX_DIR = "./gpx"
+LOCATION_NOT_FOUND = "Location not found. Only locations within the supported network are allowed."
+DESTINATION_EQUALS_ORIGIN = "Must be different from the origin."
 
 
 def get_gpx_path(origin, destination, via=None):
@@ -91,13 +92,19 @@ origin = dbc.Row(
     [
         dbc.Label("From", html_for="origin", width=2),
         dbc.Col(
-            dbc.Input(
-                type="search",
-                list="locations",
-                id="origin",
-                autoComplete="True",
-                autoFocus=True,
-            ),
+            [
+                dbc.Input(
+                    type="search",
+                    list="locations",
+                    id="origin",
+                    autoComplete="True",
+                    autoFocus=True,
+                    debounce=True,
+                ),
+                dbc.FormFeedback(
+                    LOCATION_NOT_FOUND, type="invalid", id="origin-feedback"
+                ),
+            ],
             width=5,
         ),
     ],
@@ -108,13 +115,19 @@ destination = dbc.Row(
     [
         dbc.Label("To", html_for="destination", width=2),
         dbc.Col(
-            dbc.Input(
-                type="search",
-                list="locations",
-                id="destination",
-                autoComplete="True",
-                autoFocus=True,
-            ),
+            [
+                dbc.Input(
+                    type="search",
+                    list="locations",
+                    id="destination",
+                    autoComplete="True",
+                    autoFocus=True,
+                    debounce=True,
+                ),
+                dbc.FormFeedback(
+                    LOCATION_NOT_FOUND, type="invalid", id="destination-feedback"
+                ),
+            ],
             width=5,
         ),
     ],
@@ -125,13 +138,19 @@ via = dbc.Row(
     [
         dbc.Label("Via", html_for="via", width=2),
         dbc.Col(
-            dbc.Input(
-                type="search",
-                list="locations",
-                id="via",
-                autoComplete="True",
-                autoFocus=True,
-            ),
+            [
+                dbc.Input(
+                    type="search",
+                    list="locations",
+                    id="via",
+                    autoComplete="True",
+                    autoFocus=True,
+                    debounce=True,
+                ),
+                dbc.FormFeedback(
+                    LOCATION_NOT_FOUND, type="invalid", id="via-feedback"
+                ),
+            ],
             width=5,
         ),
     ],
@@ -142,11 +161,12 @@ button = dbc.Row(
     [
         dbc.Col(
             dbc.Button(
-                dbc.Spinner(["Submit", html.Div(id="loading-output")]), id="submit",
+                dbc.Spinner(["Submit", html.Div(id="loading-output")]),
+                id="submit",
+                disabled=True,
             ),
             width=2,
         ),
-        dbc.Col(html.Div("", id="status",), width=5,),
     ],
     className="mb-3",
 )
@@ -168,7 +188,7 @@ app.layout = dbc.Container(
                         ],
                         style={"width": "100%", "height": "500px"},
                         center=(47, 8),
-                        zoom=8,
+                        zoom=DEFAULT_ZOOM,
                         id="map",
                     ),
                 ]
@@ -276,31 +296,50 @@ app.layout = dbc.Container(
 
 
 @app.callback(
-    Output("status", "children"),
-    [Input("submit", "n_clicks")],
-    State("origin", "value"),
-    State("destination", "value"),
-    State("via", "value"),
-    prevent_initial_call=True,
+    [
+        Output("origin", "invalid"),
+        Output("destination", "invalid"),
+        Output("via", "invalid"),
+        Output("destination-feedback", "children"),
+        Output("submit", "disabled"),
+    ],
+    Input("origin", "value"),
+    Input("destination", "value"),
+    Input("via", "value"),
 )
-def check_inputs(n_clicks, origin, destination, via):
-    if n_clicks is not None:
-        if origin == destination:
-            return "Origin and destination locations must be different."
-        elif origin not in locations and destination not in locations:
-            return "Origin and destination locations not found."
-        elif origin not in locations:
-            return "Origin location not found."
-        elif destination not in locations:
-            return "Destination location not found."
-        elif via not in locations and not (via == None or via == ""):
-            return "Via location not found."
+def validate_locations(origin, destination, via):
+    origin_invalid = bool(origin) and origin not in locations
+    via_invalid = bool(via) and via not in locations
+
+    destination_invalid = False
+    destination_feedback = LOCATION_NOT_FOUND
+    if destination:
+        if destination not in locations:
+            destination_invalid = True
+        elif destination == origin:
+            destination_invalid = True
+            destination_feedback = DESTINATION_EQUALS_ORIGIN
+
+    submit_disabled = (
+        not origin
+        or not destination
+        or origin_invalid
+        or destination_invalid
+        or via_invalid
+    )
+
+    return (
+        origin_invalid,
+        destination_invalid,
+        via_invalid,
+        destination_feedback,
+        submit_disabled,
+    )
 
 
 @app.callback(
     [
-        Output("map", "zoom"),
-        Output("map", "center"),
+        Output("map", "viewport"),
         Output("layer", "children"),
         Output("distance", "children"),
         Output("distance_unpaved", "children"),
@@ -347,26 +386,14 @@ def update_output(n_clicks, origin, destination, via):
 
             fig = make_graph(segments)
 
-            centroid = list(
-                box(*segments.to_crs("EPSG:4326").total_bounds).centroid.coords
-            )[0]
-            centroid = (centroid[1], centroid[0])
-
-            # TODO improve
-            zoom = DEFAULT_ZOOM
-            # Zoom in if there is enough vertical space
-            vertical_dist = (segments.total_bounds[3] - segments.total_bounds[1]) / 1000
-
-            if vertical_dist < 110:
-                zoom = 9
-            if vertical_dist < 50:
-                zoom = 10
-            if vertical_dist < 10:
-                zoom = 11
+            minx, miny, maxx, maxy = segments.to_crs("EPSG:4326").total_bounds
+            viewport = {
+                "bounds": [[miny, minx], [maxy, maxx]],
+                "options": {"padding": [20, 20]},
+            }
 
             return (
-                zoom,
-                centroid,
+                viewport,
                 geometry,
                 *results_string,
                 {"display": "block"},
