@@ -1,6 +1,6 @@
 numpy<2
 pandas
-geopandas<0.12.2
+geopandas>=0.14,<0.15
 dash
 flask
 networkx

@@ -58,9 +58,14 @@ class DESTEST(unittest.TestCase):
         length, height_gain, height_loss, length_unpaved = get_kpis(segments)
 
         self.assertAlmostEqual(length, 44 + 48, delta=length * TOLERANCE)
-        self.assertAlmostEqual(height_gain, 120 + 180, delta=height_gain * TOLERANCE)
-        self.assertAlmostEqual(height_loss, 180 + 260, delta=height_loss * TOLERANCE)
-        self.assertAlmostEqual(length_unpaved, 3 + 1, delta=length_unpaved * TOLERANCE)
+        self.assertAlmostEqual(height_gain, 90 + 160, delta=height_gain * TOLERANCE)
+        self.assertAlmostEqual(height_loss, 150 + 240, delta=height_loss * TOLERANCE)
+        self.assertAlmostEqual(length_unpaved, 3 + 0, delta=length_unpaved * TOLERANCE)
+
+    def test_cross_border_reachability(self):
+        """Belfort (FR) became reachable from Basel with the 2026 Veloland update"""
+        segments = get_path(G, "Basel", "Belfort")
+        self.assertGreater(len(segments), 0)
 
 
 # The tests below build a small synthetic network instead of using the real

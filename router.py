@@ -55,11 +55,11 @@ def load_graph():
         nx.relabel_nodes(G, {x: ast.literal_eval(x) for x in G.nodes}, False)
         G.graph["crs"] = crs.CRS(G.graph["crs"])
     else:
-        paths = gpd.read_file("data/veloland.gdb", layer="weg")
+        paths = gpd.read_file("data/veloland.gdb", layer="VeloWeg")
 
         locations = gpd.read_file(
             os.path.join(
-                "data", "swisstlmregio_2022_2056.gdb", "swissTLMRegio_Produkt_LV95.gdb"
+                "data", "swisstlmregio_2025_2056.gdb", "swissTLMRegio_Product_LV95.gdb"
             ),
             layer="TLMRegio_NamedLocation",
         )
@@ -98,7 +98,9 @@ def load_graph():
 
         # Save in GML (Graph Modelling Language)
         def stringify(s):
-            if isinstance(s, tuple):
+            if s is None:
+                return ""
+            elif isinstance(s, tuple):
                 return str(s)
             elif isinstance(s, crs.CRS):
                 return s.to_wkt()
