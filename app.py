@@ -389,7 +389,10 @@ def update_output(n_clicks, origin, destination, via):
             minx, miny, maxx, maxy = segments.to_crs("EPSG:4326").total_bounds
             viewport = {
                 "bounds": [[miny, minx], [maxy, maxx]],
-                "options": {"padding": [20, 20]},
+                # Padding accounts for the default marker icon (25x41px),
+                # which is anchored at its bottom tip and can otherwise get
+                # clipped when a stop sits right on the edge of the bounds.
+                "options": {"padding": [30, 50]},
             }
 
             return (
